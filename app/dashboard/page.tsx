@@ -297,10 +297,10 @@ export default function DashboardPage() {
             ? <Skeleton style={{ height:28, width:110, marginBottom:6 }} />
             : <KPIValue>{formatCLP(kpis?.totalIngresos ?? 0)}</KPIValue>
           }
-          <KPILabel>Total ingresos</KPILabel>
+          <KPILabel>Ingresos a MP</KPILabel>
           <KPIChange>
             <CheckCircle2 size={11} />
-            Cuotas y polerones
+            Depósitos a la cuenta
           </KPIChange>
         </KPICard>
 

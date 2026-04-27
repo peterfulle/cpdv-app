@@ -196,11 +196,20 @@ const UploadZone = styled.label<{ hasFile: boolean }>`
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function formatFecha(iso: string) {
-  return new Date(iso).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  try {
+    return d.toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })
+  } catch { return iso.slice(0, 10) }
 }
 function fmtMesLabel(yyyymm: string) {
-  const [y, m] = yyyymm.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('es-CL', { month:'short', year:'numeric' })
+  const m = /^(\d{4})-(\d{2})$/.exec(yyyymm)
+  if (!m) return yyyymm
+  const y = Number(m[1]), mo = Number(m[2])
+  try {
+    return new Date(y, mo - 1, 1).toLocaleDateString('es-CL', { month:'short', year:'numeric' })
+  } catch { return yyyymm }
 }
 
 const CATEGORIAS = ['Material', 'Aula', 'Premios', 'Eventos', 'Servicios', 'Comida', 'Otros']
