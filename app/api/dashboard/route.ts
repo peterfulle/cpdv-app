@@ -88,16 +88,17 @@ export async function GET() {
   })
 
   // ── Monthly breakdown (last 6 months) ───────────────────────────────
+  // Postgres: usar to_char en lugar de strftime (SQLite-only).
   const monthlyData = await prisma.$queryRaw<
     { mes: string; ingresos_cuotas: bigint; ingresos_poleron: bigint }[]
   >`
     SELECT 
-      strftime('%Y-%m', pago_fecha) as mes,
+      to_char(pago_fecha, 'YYYY-MM') as mes,
       COALESCE(SUM(CASE WHEN i.item_tipo = 2 THEN p.pago_monto ELSE 0 END), 0) as ingresos_cuotas,
       COALESCE(SUM(CASE WHEN i.item_tipo = 1 THEN p.pago_monto ELSE 0 END), 0) as ingresos_poleron
     FROM pagos p
     JOIN items_pagar i ON p.pago_item_id = i.item_id
-    GROUP BY strftime('%Y-%m', pago_fecha)
+    GROUP BY to_char(pago_fecha, 'YYYY-MM')
     ORDER BY mes ASC
     LIMIT 12
   `
