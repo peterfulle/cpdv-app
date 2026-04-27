@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
+const DIAG_TOKEN = 'cpv-diag-2026'
 
 // Diagnóstico: descompone B (neto contable) y detecta posibles duplicados
 // entre Pago (manual) y OtroIngreso (auto-importado desde MP).
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get('t')
+  if (token !== DIAG_TOKEN) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   const [pagos, otros, gastos] = await Promise.all([
     prisma.pago.findMany({
