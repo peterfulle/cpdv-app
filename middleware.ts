@@ -13,7 +13,6 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/diag') ||
     pathname.startsWith('/api/mercadopago/webhook')
   ) {
     if (token && pathname.startsWith('/login')) {
