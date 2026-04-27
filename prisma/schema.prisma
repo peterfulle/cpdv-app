@@ -1,0 +1,170 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id         Int      @id @default(autoincrement()) @map("usuario_id")
+  nombre     String   @unique @map("usuario_nombre")
+  contrasena String   @map("usuario_contrasena")
+  nivel      String   @map("usuario_nivel")
+  estado     String   @map("usuario_estado")
+
+  @@map("usuarios")
+}
+
+model RegistroAcceso {
+  id               Int      @id @default(autoincrement())
+  usuarioIntentado String   @map("usuario_intentado")
+  ipDireccion      String   @map("ip_direccion")
+  fechaAcceso      DateTime @default(now()) @map("fecha_acceso")
+  resultado        String   @map("resultado")
+
+  @@map("registro_accesos")
+}
+
+model Alumno {
+  id     Int    @id @default(autoincrement()) @map("alumno_id")
+  nombre String @map("alumno_nombre")
+
+  apoderados        Apoderado[]
+  pagos             Pago[]
+  eleccionPoleron   EleccionPoleron?
+  mpTransacciones   MercadoPagoTransaccion[]
+
+  @@map("alumnos")
+}
+
+model Apoderado {
+  id        Int    @id @default(autoincrement()) @map("apoderado_id")
+  alumnoId  Int    @map("apoderado_alumno_id")
+  nombre    String @map("apoderado_nombre")
+
+  alumno Alumno @relation(fields: [alumnoId], references: [id])
+
+  @@map("apoderados")
+}
+
+model TallaPoleron {
+  id     Int    @id @default(autoincrement()) @map("talla_id")
+  nombre String @map("talla_nombre")
+  valor  Int    @map("talla_valor")
+
+  elecciones EleccionPoleron[]
+
+  @@map("tallas_polerones")
+}
+
+model EleccionPoleron {
+  id       Int @id @default(autoincrement()) @map("eleccion_id")
+  alumnoId Int @unique @map("eleccion_alumno_id")
+  tallaId  Int @map("eleccion_talla_id")
+
+  alumno Alumno       @relation(fields: [alumnoId], references: [id])
+  talla  TallaPoleron @relation(fields: [tallaId], references: [id])
+
+  @@map("eleccion_polerones")
+}
+
+model CategoriaItem {
+  id     Int    @id @default(autoincrement()) @map("categoria_id")
+  nombre String @map("categoria_nombre")
+
+  items ItemPagar[]
+
+  @@map("categorias_items_pagar")
+}
+
+model ItemPagar {
+  id          Int    @id @default(autoincrement()) @map("item_id")
+  nombre      String @map("item_nombre")
+  valor       Int    @map("item_valor")
+  tipo        Int    @map("item_tipo")
+
+  categoria       CategoriaItem            @relation(fields: [tipo], references: [id])
+  pagos           Pago[]
+  mpTransacciones MercadoPagoTransaccion[]
+
+  @@map("items_pagar")
+}
+
+model Pago {
+  id          Int      @id @default(autoincrement()) @map("pago_id")
+  alumnoId    Int      @map("pago_alumno_id")
+  itemId      Int      @map("pago_item_id")
+  monto       Int      @map("pago_monto")
+  comprobante String?  @map("pago_comprobante")
+  fecha       DateTime @map("pago_fecha")
+
+  alumno Alumno    @relation(fields: [alumnoId], references: [id])
+  item   ItemPagar @relation(fields: [itemId], references: [id])
+  mpTransaccion MercadoPagoTransaccion?
+
+  @@map("pagos")
+}
+
+model MercadoPagoTransaccion {
+  id            Int      @id @default(autoincrement()) @map("mp_id")
+  preferenceId  String   @unique @map("mp_preference_id")
+  paymentId     String?  @map("mp_payment_id")
+  status        String   @default("pending") @map("mp_status")
+  statusDetail  String?  @map("mp_status_detail")
+  alumnoId      Int      @map("mp_alumno_id")
+  itemId        Int      @map("mp_item_id")
+  monto         Int      @map("mp_monto")
+  externalRef   String   @map("mp_external_ref")
+  checkoutUrl   String   @map("mp_checkout_url")
+  pagoId        Int?     @unique @map("mp_pago_id")
+  createdAt     DateTime @default(now()) @map("mp_created_at")
+  updatedAt     DateTime @updatedAt @map("mp_updated_at")
+
+  alumno Alumno    @relation(fields: [alumnoId], references: [id])
+  item   ItemPagar @relation(fields: [itemId], references: [id])
+  pago   Pago?     @relation(fields: [pagoId], references: [id])
+
+  @@map("mercadopago_transacciones")
+}
+
+model Gasto {
+  id          Int      @id @default(autoincrement()) @map("gasto_id")
+  nombre      String   @map("gasto_nombre")
+  monto       Int      @map("gasto_monto")
+  fecha       DateTime @default(now()) @map("gasto_fecha")
+  comprobante String?  @map("gasto_comprobante")
+
+  @@map("gastos")
+}
+
+model OtroIngreso {
+  id          Int      @id @default(autoincrement()) @map("ingreso_id")
+  nombre      String   @map("ingreso_nombre")
+  monto       Int      @map("ingreso_monto")
+  comprobante String   @default("") @map("ingreso_comprobante")
+  fecha       DateTime @default(now()) @map("ingreso_fecha")
+
+  @@map("otros_ingresos")
+}
+
+model FondoConfig {
+  id              Int      @id @default(1)
+  saldoActual     Int      @default(0)
+  tasaAnualPct    Float    @default(3.5)
+  fechaReferencia DateTime @default(now())
+  notas           String   @default("")
+  updatedAt       DateTime @updatedAt
+
+  // Cache del saldo REAL obtenido del release_report de MP
+  saldoReal           Int?
+  saldoRealFecha      DateTime?
+  interesRealAcumulado Int?
+  ultimaSincronizacion DateTime?
+
+  @@map("fondo_config")
+}
