@@ -80,10 +80,11 @@ export async function GET() {
   const totalGastos = totalGastosLegacy
   const gastosSource: 'local' = 'local'
 
-  // Total ingresos (informativo): pagos manuales + otros ingresos
-  // ⚠️ ESTE NÚMERO SIGUE SIENDO LEGACY (con posible doble conteo) — se mantiene
-  // por compatibilidad con gráficos. La fuente de verdad es saldoCaja.
-  const totalIngresos = totalOtros + totalRecPoleron + totalRecCuotas
+  // Total ingresos = SOLO OtroIngreso (entradas reales al banco MP + manuales).
+  // Los Pago son ASIGNACIONES a alumnos/cuotas, no ingresos adicionales.
+  // Sumarlos producía doble conteo (~$1.28M de inflado).
+  // totalRecPoleron y totalRecCuotas siguen alimentando los % de meta.
+  const totalIngresos = totalOtros
   const metaPoleron = Number(metaPolRes[0]?.meta ?? 0)
   const metaCuotas = (itemsCuotas._sum.valor ?? 0) * alumnos
   const percPoleron = metaPoleron > 0 ? Math.round((totalRecPoleron / metaPoleron) * 100) : 0

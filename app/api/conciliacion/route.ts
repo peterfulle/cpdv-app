@@ -34,7 +34,10 @@ export async function GET() {
   const totalPagos  = pagosAgg._sum.monto ?? 0
   const totalOtros  = otrosAgg._sum.monto ?? 0
   const totalGastos = gastosAgg._sum.monto ?? 0
-  const ingresosCurso = totalPagos + totalOtros
+  // Ingresos del curso = SOLO OtroIngreso (entradas al banco). Los Pago son
+  // asignaciones a alumnos/cuotas, no ingresos adicionales (sumarlos
+  // producía doble conteo). totalPagos se mantiene como dato informativo.
+  const ingresosCurso = totalOtros
   const netoCurso     = ingresosCurso - totalGastos
 
   // Saldo bancario MP (preferencia: saldoReal cacheado; si no existe, null)
