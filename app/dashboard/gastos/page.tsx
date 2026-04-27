@@ -508,22 +508,34 @@ function NuevaSalidaModal({ onClose, onCreated }: { onClose: () => void; onCreat
     if (!valid) return
     setSubmitting(true); setErr(null)
     try {
+      // Validar fecha en formato YYYY-MM-DD y construir ISO sin TZ shift
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha)
+      if (!m) { setErr('Fecha inválida'); setSubmitting(false); return }
+      const fechaIso = `${m[1]}-${m[2]}-${m[3]}T12:00:00.000Z`
+
       const fd = new FormData()
       fd.append('nombre', nombre.trim())
       fd.append('monto', String(monto))
-      fd.append('fecha', new Date(fecha).toISOString())
+      fd.append('fecha', fechaIso)
       fd.append('emisor', emisor.trim())
       fd.append('beneficiario', beneficiario.trim())
       fd.append('categoria', categoria)
       fd.append('metodoPago', metodoPago)
       fd.append('descripcion', descripcion.trim())
       if (file) fd.append('comprobante', file)
+
       const r = await fetch('/api/gastos', { method: 'POST', body: fd })
-      const j = await r.json()
-      if (!r.ok) { setErr(j.error ?? 'Error'); return }
+      const txt = await r.text()
+      let j: any = null
+      try { j = txt ? JSON.parse(txt) : null } catch { /* respuesta no-JSON */ }
+
+      if (!r.ok) {
+        setErr(j?.error ?? `HTTP ${r.status} · ${txt.slice(0, 120) || 'sin detalle'}`)
+        return
+      }
       onCreated()
     } catch (e: any) {
-      setErr(e?.message ?? 'Error')
+      setErr(e?.message ?? 'Error desconocido')
     } finally {
       setSubmitting(false)
     }
