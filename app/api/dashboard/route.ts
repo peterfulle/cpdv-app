@@ -76,10 +76,9 @@ export async function GET() {
     saldoCaja = totalIngresosLegacy - totalGastosLegacy
   }
 
-  // Gastos = solo salidas reales desde MP (cacheadas), o legacy si no hay sync
-  const totalGastos = fondoConfig.totalGastosMp ?? totalGastosLegacy
-  const gastosSource: 'mp_real' | 'legacy' =
-    fondoConfig.totalGastosMp != null ? 'mp_real' : 'legacy'
+  // Gastos = registro manual local (Gasto table) — fuente única de verdad
+  const totalGastos = totalGastosLegacy
+  const gastosSource: 'local' = 'local'
 
   // Total ingresos (informativo): pagos manuales + otros ingresos
   // ⚠️ ESTE NÚMERO SIGUE SIENDO LEGACY (con posible doble conteo) — se mantiene

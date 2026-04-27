@@ -306,25 +306,19 @@ export default function DashboardPage() {
 
         <KPICard
           initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:.12 }}
-          onClick={() => setShowGastosModal(true)}
+          onClick={() => { window.location.href = '/dashboard/gastos' }}
           style={{ cursor:'pointer' }}
-          title="Click para ver transferencias emitidas"
+          title="Ver registro de gastos"
         >
           <KPIIcon><TrendingDown size={14} /></KPIIcon>
           {isLoading
             ? <Skeleton style={{ height:28, width:90, marginBottom:6 }} />
             : <KPIValue>{formatCLP(kpis?.totalGastos ?? 0)}</KPIValue>
           }
-          <KPILabel>
-            Gastos {kpis?.gastosSource === 'mp_real'
-              ? <span style={{ color:'#10b981', fontWeight:700 }}>· solo salidas MP</span>
-              : <span style={{ color:'#f59e0b', fontWeight:700 }}>· legacy</span>}
-          </KPILabel>
+          <KPILabel>Gastos</KPILabel>
           <KPIChange>
             <AlertCircle size={11} />
-            {kpis?.gastosSource === 'mp_real'
-              ? 'Transferencias MP → terceros'
-              : (kpis?.totalGastos ? `${calcPercent(kpis.totalGastos, kpis.totalIngresos)}% de ingresos` : '--')}
+            {kpis?.totalGastos ? `${calcPercent(kpis.totalGastos, kpis.totalIngresos)}% de ingresos` : '--'}
           </KPIChange>
         </KPICard>
 

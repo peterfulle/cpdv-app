@@ -133,11 +133,19 @@ model MercadoPagoTransaccion {
 }
 
 model Gasto {
-  id          Int      @id @default(autoincrement()) @map("gasto_id")
-  nombre      String   @map("gasto_nombre")
-  monto       Int      @map("gasto_monto")
-  fecha       DateTime @default(now()) @map("gasto_fecha")
-  comprobante String?  @map("gasto_comprobante")
+  id            Int      @id @default(autoincrement()) @map("gasto_id")
+  nombre        String   @map("gasto_nombre")
+  monto         Int      @map("gasto_monto")
+  fecha         DateTime @default(now()) @map("gasto_fecha")
+  comprobante   String?  @map("gasto_comprobante")
+
+  // Campos extendidos para el módulo de balance de salidas:
+  emisor        String   @default("Tesorería MP")  @map("gasto_emisor")
+  beneficiario  String   @default("")              @map("gasto_beneficiario")
+  categoria     String   @default("Otros")         @map("gasto_categoria")
+  metodoPago    String   @default("mp_transfer")   @map("gasto_metodo_pago")
+  descripcion   String   @default("")              @map("gasto_descripcion")
+  createdAt     DateTime @default(now())           @map("gasto_created_at")
 
   @@map("gastos")
 }
