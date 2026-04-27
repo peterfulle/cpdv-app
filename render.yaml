@@ -4,26 +4,28 @@
 
 databases:
   - name: cpdv-db
-    plan: free          # 90 días gratis; subir a starter si se necesita persistente
+    plan: basic-256mb     # plan pagado: persistente, backups diarios, ~$6/mes
     databaseName: cpdv
     user: cpdv
     region: oregon
+    postgresMajorVersion: "16"
 
 services:
   - type: web
     name: cpdv-app
     runtime: node
-    plan: free          # subir a starter para evitar el spin-down
+    plan: starter         # plan pagado: 512MB RAM, sin spin-down, ~$7/mes
     region: oregon
     branch: main
     buildCommand: npm ci && npx prisma generate && npm run build
     startCommand: npx prisma db push --accept-data-loss=false && npm run start
     healthCheckPath: /
     autoDeploy: true
+    numInstances: 1
     disk:
       name: comprobantes
       mountPath: /opt/render/project/src/public/comprobantes
-      sizeGB: 1
+      sizeGB: 5          # 5GB para crecer holgado, ~$1.25/mes
     envVars:
       - key: NODE_VERSION
         value: 20.11.1
