@@ -351,7 +351,7 @@ const MANAGEMENT_ITEMS = [
 const ACTION_ITEMS = [
   { href: '/dashboard/pagos/nuevo',    label: 'Ingresar Pago',   icon: PlusCircle, color: '#34d399' },
   { href: '/dashboard/ingresos/nuevo', label: 'Otro Ingreso',    icon: TrendingUp,  color: '#8098f9' },
-  { href: '/dashboard/gastos/nuevo',   label: 'Registrar Gasto', icon: DollarSign,  color: '#fb7185' },
+  { href: '/dashboard/gastos',         label: 'Registrar Gasto', icon: DollarSign,  color: '#fb7185' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────
