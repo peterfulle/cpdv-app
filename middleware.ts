@@ -7,7 +7,14 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public paths
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
+  // - /login y /api/auth para el flujo NextAuth
+  // - /api/mercadopago/webhook recibe notificaciones server-to-server de MP
+  //   (sin cookies de sesión); debe ser público o MP recibirá 307.
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/mercadopago/webhook')
+  ) {
     if (token && pathname.startsWith('/login')) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
