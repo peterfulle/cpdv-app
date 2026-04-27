@@ -87,6 +87,19 @@ export async function GET(req: NextRequest) {
   const csv = await csvRes.text()
 
   // 3) Parsear
+  // Formato CSV release_report MP (separador `;`):
+  //   0:DATE  1:SOURCE_ID  2:DESCRIPTION  3:CREDIT  4:DEBIT  5:NET_DEBIT
+  //   6:NET_CREDIT  7:TRANSACTION_NET  8:SETTLEMENT_NET  9-11:varios
+  //   12:BALANCE
+  //
+  // Tipos de DESCRIPTION relevantes:
+  //   - payment              → ingreso (cobro recibido)
+  //   - asset_management     → interés MP abonado
+  //   - withdraw / payout    → retiro a banco externo (SALIDA)
+  //   - mercadopago_transfer → transferencia a otro usuario MP (SALIDA)
+  //   - refund               → reembolso a un pagador (SALIDA)
+  //
+  // Identificamos SALIDAS por: DEBIT > 0 (col[4]).
   const lines = csv.split('\n').filter(l => l.trim().length > 0)
   let saldoReal = 0
   let saldoFecha: Date | null = null
@@ -94,17 +107,54 @@ export async function GET(req: NextRequest) {
   let totalDepositado = 0
   let cantidadDepositos = 0
 
+  type MovOut = {
+    fecha: string
+    sourceId: string
+    descripcion: string  // tipo de evento (raw description)
+    glosa: string        // descripción legible
+    monto: number        // positivo, en CLP
+    saldoDespues: number
+  }
+  const movimientosOut: MovOut[] = []
+  let totalGastosMp = 0
+
+  // Descripciones legibles (es-CL)
+  const descGlosa: Record<string, string> = {
+    withdraw:               'Retiro a cuenta bancaria',
+    payout:                 'Retiro a cuenta bancaria',
+    mercadopago_transfer:   'Transferencia a otro usuario MP',
+    refund:                 'Reembolso a pagador',
+    reserve_for_dispute:    'Retención por disputa',
+    chargeback:             'Contracargo',
+  }
+
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(';')
     if (cols.length < 13) continue
-    const date = cols[0]
-    const desc = cols[2]
-    const credit = parseFloat(cols[3] || '0')
+    const date    = cols[0]
+    const sourceId = (cols[1] ?? '').trim()
+    const desc    = (cols[2] ?? '').trim()
+    const credit  = parseFloat(cols[3] || '0')
+    const debit   = parseFloat(cols[4] || '0')
     const balance = parseFloat(cols[12] || '0')
     if (!date) continue
 
     if (desc === 'asset_management') interesAcumulado += credit
     if (desc === 'payment') { totalDepositado += credit; cantidadDepositos += 1 }
+
+    if (debit > 0) {
+      const monto = Math.abs(Math.round(debit))
+      const glosa = descGlosa[desc] ?? desc.replace(/_/g, ' ')
+      movimientosOut.push({
+        fecha:        date,
+        sourceId,
+        descripcion:  desc,
+        glosa,
+        monto,
+        saldoDespues: Math.round(balance),
+      })
+      totalGastosMp += monto
+    }
 
     if (balance > 0) {
       saldoReal = balance
@@ -116,6 +166,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'CSV vacío o sin movimientos' }, { status: 502 })
   }
 
+  // Ordenar SALIDAS por fecha desc (más reciente primero)
+  movimientosOut.sort((a, b) => b.fecha.localeCompare(a.fecha))
+
   // 4) Guardar
   await prisma.fondoConfig.upsert({
     where: { id: 1 },
@@ -125,12 +178,16 @@ export async function GET(req: NextRequest) {
       saldoRealFecha: saldoFecha,
       interesRealAcumulado: Math.round(interesAcumulado),
       ultimaSincronizacion: new Date(),
+      movimientosOutJson: JSON.stringify(movimientosOut),
+      totalGastosMp,
     },
     update: {
       saldoReal: Math.round(saldoReal),
       saldoRealFecha: saldoFecha,
       interesRealAcumulado: Math.round(interesAcumulado),
       ultimaSincronizacion: new Date(),
+      movimientosOutJson: JSON.stringify(movimientosOut),
+      totalGastosMp,
     },
   })
 
@@ -143,6 +200,8 @@ export async function GET(req: NextRequest) {
     interesRealAcumulado: Math.round(interesAcumulado),
     totalDepositado: Math.round(totalDepositado),
     cantidadDepositos,
+    totalGastosMp,
+    cantidadGastos: movimientosOut.length,
     fileName: t.file_name,
   })
 }

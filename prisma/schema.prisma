@@ -166,5 +166,11 @@ model FondoConfig {
   interesRealAcumulado Int?
   ultimaSincronizacion DateTime?
 
+  // Cache de movimientos SALIENTES (retiros + transferencias MP → tercero)
+  // parseados del release_report. JSON serializado de MpMovimientoOut[].
+  // Total de salidas (positivo, en CLP) para uso rápido en dashboard.
+  movimientosOutJson  String?
+  totalGastosMp       Int?
+
   @@map("fondo_config")
 }

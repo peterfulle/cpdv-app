@@ -13,6 +13,12 @@ export async function GET() {
   await autoImportMpDeposits().catch(() => null)
 
   // ── Totals ─────────────────────────────────────────────────────────────
+  const fondoConfig = await prisma.fondoConfig.upsert({
+    where: { id: 1 },
+    create: { id: 1 },
+    update: {},
+  })
+
   const [otrosIngresos, recPoleron, recCuotas, metaPolRes, gastos, alumnos, itemsCuotas] =
     await Promise.all([
       prisma.otroIngreso.aggregate({ _sum: { monto: true } }),
@@ -41,9 +47,44 @@ export async function GET() {
   const totalOtros = otrosIngresos._sum.monto ?? 0
   const totalRecPoleron = recPoleron._sum.monto ?? 0
   const totalRecCuotas = recCuotas._sum.monto ?? 0
-  const totalGastos = gastos._sum.monto ?? 0
+  const totalGastosLegacy = gastos._sum.monto ?? 0
+
+  // ── OPCIÓN 3 (autoritativa): saldo y gastos provienen de MP ───────
+  // saldoCaja = saldo real MP (cacheado release_report) + interés extrapolado
+  //             segundo a segundo desde la última sincronización.
+  // totalGastos = SOLO transferencias salientes desde la cuenta MP a terceros
+  //               (retiros + transferencias MP→tercero + reembolsos).
+  // Si aún no hay sincronización, caemos al cálculo legacy con un flag para
+  // que la UI invite a sincronizar.
+  const tasaAnual = fondoConfig.tasaAnualPct / 100
+  let saldoCaja = 0
+  let interesPorSegundo = 0
+  let saldoSource: 'mp_real' | 'legacy' = 'legacy'
+  let saldoBaseFecha: string | null = null
+  let interesEstimadoExtra = 0
+
+  if (fondoConfig.saldoReal && fondoConfig.saldoRealFecha) {
+    const segundos = (Date.now() - fondoConfig.saldoRealFecha.getTime()) / 1000
+    interesPorSegundo    = (fondoConfig.saldoReal * tasaAnual) / (365 * 24 * 60 * 60)
+    interesEstimadoExtra = interesPorSegundo * segundos
+    saldoCaja            = Math.round(fondoConfig.saldoReal + interesEstimadoExtra)
+    saldoSource          = 'mp_real'
+    saldoBaseFecha       = fondoConfig.saldoRealFecha.toISOString()
+  } else {
+    // Fallback al cálculo legacy (posiblemente con doble conteo)
+    const totalIngresosLegacy = totalOtros + totalRecPoleron + totalRecCuotas
+    saldoCaja = totalIngresosLegacy - totalGastosLegacy
+  }
+
+  // Gastos = solo salidas reales desde MP (cacheadas), o legacy si no hay sync
+  const totalGastos = fondoConfig.totalGastosMp ?? totalGastosLegacy
+  const gastosSource: 'mp_real' | 'legacy' =
+    fondoConfig.totalGastosMp != null ? 'mp_real' : 'legacy'
+
+  // Total ingresos (informativo): pagos manuales + otros ingresos
+  // ⚠️ ESTE NÚMERO SIGUE SIENDO LEGACY (con posible doble conteo) — se mantiene
+  // por compatibilidad con gráficos. La fuente de verdad es saldoCaja.
   const totalIngresos = totalOtros + totalRecPoleron + totalRecCuotas
-  const saldoCaja = totalIngresos - totalGastos
   const metaPoleron = Number(metaPolRes[0]?.meta ?? 0)
   const metaCuotas = (itemsCuotas._sum.valor ?? 0) * alumnos
   const percPoleron = metaPoleron > 0 ? Math.round((totalRecPoleron / metaPoleron) * 100) : 0
@@ -118,6 +159,16 @@ export async function GET() {
       alumnosPendientesCuotas,
       alumnosPendientesPoleron,
       otrosIngresos: totalOtros,
+      // Metadata para que la UI explique el origen del saldo y permita
+      // ofrecer el botón "Sincronizar saldo MP" cuando aún no hay cache.
+      saldoSource,
+      saldoBaseFecha,
+      interesPorSegundo,
+      ultimaSincronizacionMp: fondoConfig.ultimaSincronizacion?.toISOString() ?? null,
+      gastosSource,
+      // Para transparencia: también exponemos el cálculo legacy
+      saldoLegacy: totalIngresos - totalGastosLegacy,
+      gastosLegacy: totalGastosLegacy,
     },
     recentPayments: recentPayments.map((p) => ({
       id: p.id,
