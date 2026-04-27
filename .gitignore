@@ -60,3 +60,4 @@ prisma/migrations/dev/
 
 # OS
 Thumbs.db
+diag.mjs
