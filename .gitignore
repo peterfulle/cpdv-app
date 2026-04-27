@@ -61,3 +61,5 @@ prisma/migrations/dev/
 # OS
 Thumbs.db
 diag.mjs
+.env.local.bak
+.env.local*
